@@ -3,6 +3,7 @@ import swaggerUI from "swagger-ui-express";
 import mongoose from "mongoose";
 import cors from "cors";
 import dotenv from "dotenv";
+import { authRoutes } from "./routes/auth.js";
 
 const app = express();
 app.use(cors());
@@ -15,6 +16,7 @@ mongoose
 	.then(() => console.log("MongoDB connected"))
 	.catch((err) => console.error("Error with MongoDB Connection", err));
 
+app.use("/auth", authRoutes);
 app.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
+	console.log(`Server is running on port ${port}`);
 });
