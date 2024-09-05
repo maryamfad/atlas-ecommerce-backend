@@ -1,44 +1,78 @@
-import chaiHttp from "chai-http/index.js";
-import server from "../../index.js";
-import User from "../../models/User.js";
+import chai, { expect } from 'chai';
+import chaiHttp from "chai-http";
+import server from "../../index";
+import User from "../../models/User";
+import { Response } from "superagent";
 
-let chai;
-await import("chai").then((result) => (chai = result.use(chaiHttp)));
+chai.use(chaiHttp);
+console.log("type",typeof chai);
+// const { expect } = chai;
 
-chai.should();
+describe("POST /signup", function () {
+	beforeEach(async function () {
+		await User.deleteMany({});
+	});
 
-describe("Signup api", function () {
-	beforeEach(function (done) {
-		User.deleteMany({})
-			.then((result) => {
-				console.log("Users deleted:", result);
+	it("should register a new user and return the user details", (done) => {
+		const user = {
+			username: "testuser",
+			email: "testuser@example.com",
+			password: "testpassword",
+		};
+
+		chai.request.execute(server)
+			.post("/signup")
+			.send(user)
+			.end((err: any, res: Response) => {
+				if (err) done(err);
+
+				expect(res).to.have.status(200);
+				expect(res.body).to.be.an("object");
+				expect(res.body)
+					.to.have.property("username")
+					.eql(user.username);
+				expect(res.body).to.have.property("email").eql(user.email);
+				expect(res.body).to.have.property("role").eql("customer");
 				done();
-			})
-			.catch((error) => {
-				console.error("Error deleting users:", error);
-				done(error);
 			});
 	});
 
-	describe("POST /auth/signup", function () {
-		it("it should register a new user", (done) => {
-			const user = {
+	it("should return 400 for invalid input", (done) => {
+		const invalidUser = {
+			username: "",
+			email: "invalidemail",
+			password: "",
+		};
+
+		chai.request.execute(server)
+			.post("/signup")
+			.send(invalidUser)
+			.end((err: any, res: Response) => {
+				if (err) done(err);
+
+				expect(res).to.have.status(400);
+				expect(res.body).to.have.property("error").eql("Invalid Input");
+				done();
+			});
+	});
+
+	it("should handle server errors gracefully", (done) => {
+		chai.request.execute(server)
+			.post("/signup")
+			.send({
 				username: "testuser",
 				email: "testuser@example.com",
 				password: "testpassword",
-			};
+			})
+			.end((err: any, res: Response) => {
+				if (err) done(err);
 
-			chai.request(server)
-				.post("/auth/signup")
-				.send(user)
-				.end((err, res) => {
-					if (err) done(err);
-
-					res.should.have.status(200);
-					res.body.should.be.a("object");
-					res.body.should.have.property("username").eql("testuser");
-					done();
-				});
-		});
+				// Assuming that a server error results in a 500 status code
+				expect(res).to.have.status(500);
+				expect(res.body)
+					.to.have.property("error")
+					.eql("An unknown error occurred");
+				done();
+			});
 	});
 });
